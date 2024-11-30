@@ -1,60 +1,54 @@
-socket.onmessage = (event) => {
-    let { data, sourceDocument, conversationId } = JSON.parse(event.data);
+                socket.onmessage = (event) => {
+                    let { data, sourceDocument, conversationId } = JSON.parse(event.data);
 
-    const responseElement = document.getElementById(`res-${QuestionCount}-${conversationId}`);
+                    // Locate the response element for the conversation
+                    const responseElement = document.getElementById(`res-${QuestionCount}-${conversationId}`);
 
-    // Handle loader display
-    if (
-        responseElement.innerHTML.trim() === `
-            <div class="loader">
-                <div></div>
-                <div></div>
-                <div></div>
-            </div>
-        `
-    ) {
-        responseElement.innerHTML = "";
-    }
+                    // Remove loader if it exists
+                    const loaderElement = responseElement.querySelector(".loader");
+                    if (loaderElement) {
+                        loaderElement.remove(); // Removes the loader directly
+                    }
 
-    // Process received data
-    if (data && data !== "##END_CONVERSATION##") {
-        responseElement.innerHTML += linkReplacer(data); // Replace links in real-time
-    }
+                    // Process received data
+                    if (data && data !== "##END_CONVERSATION##") {
+                        responseElement.innerHTML += linkReplacer(data); // Append processed data with links replaced
+                    }
 
-    if (data === "##END_CONVERSATION##") {
-        let question = document.getElementById(`question-${QuestionCount}-${conversationId}`).innerText;
+                    // Handle the end of the conversation
+                    if (data === "##END_CONVERSATION##") {
+                        let question = document.getElementById(`question-${QuestionCount}-${conversationId}`).innerText;
 
-        // Add feedback buttons
-        const feedbackDiv = document.createElement("div");
-        feedbackDiv.className = "feedback-buttons";
-        feedbackDiv.innerHTML = `
-            <i class="fas fa-thumbs-up like_button" data-response="${data}" data-conversationId="${conversationId}" data-question="${question}"></i>
-            <i class="fas fa-thumbs-down dislike_button" data-conversationId="${conversationId}" data-response="${data}" data-question="${question}"></i>
-            <i class="fas fa-file-alt show_source_button" data-response="${data}" data-question="${question}" data-source-documents='res-${QuestionCount}-${conversationId}'></i>
-        `;
-        responseElement.appendChild(feedbackDiv);
+                        // Add feedback buttons
+                        const feedbackDiv = document.createElement("div");
+                        feedbackDiv.className = "feedback-buttons";
+                        feedbackDiv.innerHTML = `
+                            <i class="fas fa-thumbs-up like_button" data-response="${data}" data-conversationId="${conversationId}" data-question="${question}"></i>
+                            <i class="fas fa-thumbs-down dislike_button" data-conversationId="${conversationId}" data-response="${data}" data-question="${question}"></i>
+                            <i class="fas fa-file-alt show_source_button" data-response="${data}" data-question="${question}" data-source-documents='res-${QuestionCount}-${conversationId}'></i>
+                        `;
+                        responseElement.appendChild(feedbackDiv);
 
-        // Ensure all links are converted
-        responseElement.innerHTML = linkReplacer(responseElement.innerHTML);
-    }
+                        // Ensure all text links are converted to hyperlinks
+                        responseElement.innerHTML = linkReplacer(responseElement.innerHTML);
+                    }
 
-    // Store source documents if available
-    if (sourceDocument) {
-        if (!SOURCE_DOCS[`res-${QuestionCount}-${conversationId}`]) {
-            SOURCE_DOCS[`res-${QuestionCount}-${conversationId}`] = [];
-        }
-        SOURCE_DOCS[`res-${QuestionCount}-${conversationId}`].push(sourceDocument);
-    }
-};
+                    // Store source documents if available
+                    if (sourceDocument) {
+                        if (!SOURCE_DOCS[`res-${QuestionCount}-${conversationId}`]) {
+                            SOURCE_DOCS[`res-${QuestionCount}-${conversationId}`] = [];
+                        }
+                        SOURCE_DOCS[`res-${QuestionCount}-${conversationId}`].push(sourceDocument);
+                    }
+                };
 
-// Function to identify and replace plain text links with clickable hyperlinks
-function linkReplacer(text) {
-    const urlRegex = /(https?:\/\/[^\s]+)/g; // Matches http:// or https:// followed by non-whitespace characters
-    return text.replace(urlRegex, (url) => {
-        return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
-    });
-}
-
+                // Function to identify and replace plain text links with clickable hyperlinks
+                function linkReplacer(text) {
+                    const urlRegex = /(https?:\/\/[^\s]+)/g; // Matches http:// or https:// followed by non-whitespace characters
+                    return text.replace(urlRegex, (url) => {
+                        return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+                    });
+                }
 
 
 The MIT License (MIT)
