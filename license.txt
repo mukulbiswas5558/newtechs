@@ -1,4 +1,145 @@
-                socket.onmessage = (event) => {
+function linkReplacer(text) {
+    const urlRegex = /(https?:\/\/[^\s]+)/g; // Matches http:// or https:// followed by non-whitespace characters
+    return text.replace(urlRegex, (url) => {
+        return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+    });
+}
+
+async function connectWebSocket() {
+    let accessToken = await fetchAccessToken();
+    let socket;
+
+    const connect = () => {
+        socket = new WebSocket(`{{websocket_url}}?Authorization=${accessToken}`);
+
+        // Enable the send button right away
+        let send_btn = document.getElementById("send-btn");
+        send_btn.disabled = false;
+        send_btn.style.cursor = "pointer";
+
+        document.getElementById("chat-form").addEventListener("submit", function (e) {
+            e.preventDefault();
+            var question = document.getElementById("question").value;
+            if (question) {
+                QuestionCount++;
+                var chatbox = document.getElementById("chatbox");
+                var questionDiv = document.createElement("div");
+                questionDiv.className = "message right";
+                questionDiv.innerHTML = question;
+                chatbox.appendChild(questionDiv);
+                chatbox.scrollTop = chatbox.scrollHeight;
+
+                var responseDiv = document.createElement("div");
+                responseDiv.className = "message left loader-container";
+                responseDiv.id = `res-${QuestionCount}-${CONVERSATION_ID}`;
+                responseDiv.innerHTML = `<div class="loader"><div></div><div></div><div></div></div>`;
+                chatbox.appendChild(responseDiv);
+                chatbox.scrollTop = chatbox.scrollHeight;
+
+                questionDiv.id = `question-${QuestionCount}-${CONVERSATION_ID}`;
+
+                SOURCE_DOCS[responseDiv.id] = [];
+
+                socket.send(JSON.stringify({
+                    ReturnSourceDoc: true,
+                    comment: "linked",
+                    action: "sendMessage",
+                    question: question,
+                    conversationId: CONVERSATION_ID,
+                    promptTemplate: `{{prompt}}`,
+                }));
+                document.getElementById("question").value = "";
+            }
+        });
+
+        socket.onopen = () => {
+            CONNECTED_WEBSOCKET.value = true;
+            let send_btn = document.getElementById("send-btn");
+            send_btn.disabled = false; // Make sure send button is enabled once connected
+            send_btn.style.cursor = "pointer";
+            console.log("WebSocket connection established");
+        };
+
+        socket.onmessage = (event) => {
+            let { data, sourceDocument, conversationId } = JSON.parse(event.data);
+
+            const responseElement = document.getElementById(`res-${QuestionCount}-${conversationId}`);
+            const loaderElement = responseElement.querySelector(".loader");
+            if (loaderElement) {
+                loaderElement.remove();
+            }
+
+            if (data && data !== "##END_CONVERSATION##") {
+                // Replace plain URLs with clickable links before appending to the response
+                responseElement.innerHTML += linkReplacer(data);
+            }
+
+            if (data === "##END_CONVERSATION##") {
+                let question = document.getElementById(`question-${QuestionCount}-${conversationId}`).innerText;
+
+                const feedbackDiv = document.createElement("div");
+                feedbackDiv.className = "feedback-buttons";
+                feedbackDiv.innerHTML = `
+                    <i class="fas fa-thumbs-up like_button" data-response="${data}" data-conversationId="${conversationId}" data-question="${question}"></i>
+                    <i class="fas fa-thumbs-down dislike_button" data-conversationId="${conversationId}" data-response="${data}" data-question="${question}"></i>
+                    <i class="fas fa-file-alt show_source_button" data-response="${data}" data-question="${question}" data-source-documents='res-${QuestionCount}-${conversationId}'></i>
+                `;
+                responseElement.appendChild(feedbackDiv);
+
+                // Replace links in the final response content
+                responseElement.innerHTML = linkReplacer(responseElement.innerHTML);
+            }
+
+            if (sourceDocument) {
+                if (!SOURCE_DOCS[`res-${QuestionCount}-${conversationId}`]) {
+                    SOURCE_DOCS[`res-${QuestionCount}-${conversationId}`] = [];
+                }
+                SOURCE_DOCS[`res-${QuestionCount}-${conversationId}`].push(sourceDocument);
+            }
+        };
+
+        socket.onclose = async (event) => {
+            console.log("WebSocket closed:", event.reason);
+            if (event.code !== 1000) {
+                console.log("Reconnecting...");
+                accessToken = await fetchAccessToken();
+                connect();
+            }
+        };
+
+        socket.onerror = (error) => {
+            console.error("WebSocket error:", error);
+        };
+    };
+
+    connect();
+
+    setInterval(async () => {
+        accessToken = await fetchAccessToken();
+        console.log("Access token refreshed");
+    }, 4 * 60 * 1000);
+}
+
+// Start WebSocket connection
+connectWebSocket();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+socket.onmessage = (event) => {
                     let { data, sourceDocument, conversationId } = JSON.parse(event.data);
 
                     // Locate the response element for the conversation
